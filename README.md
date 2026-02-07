@@ -7,7 +7,7 @@ mas construído com **boas práticas de backend**, **arquitetura limpa** e **seg
 
 ## 🚧 Status do projeto
 Em desenvolvimento ativo.  
-Muitas ideias ainda estão no forno 🔥  
+Muitas ideias ainda estão no forno
 Novos updates em breve.
 
 ## 🛠️ Tecnologias (até agora)
@@ -28,4 +28,4 @@ Estudar e aplicar:
 ---
 
 > Projeto em constante evolução.  
-> Se algo mudar… é porque aprendi algo novo 😄
+> Se algo mudar… é porque aprendi algo novo!!
