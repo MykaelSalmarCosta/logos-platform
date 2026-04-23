@@ -1,10 +1,10 @@
 package com.Mysco.Logos.service;
 
 import com.Mysco.Logos.dto.user.UserCreateDTO;
+import com.Mysco.Logos.exception.BusinessRuleException;
 import com.Mysco.Logos.model.User;
 import com.Mysco.Logos.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,11 +24,10 @@ public class UserService {
 
     @Transactional
     public Long create(UserCreateDTO dto) {
-
         repository.findByEmail(dto.email())
-                .ifPresent(u -> {
-                            throw new IllegalStateException("Email já cadastrado");
-                        });
+                .ifPresent(user -> {
+                    throw new BusinessRuleException("Email ja cadastrado");
+                });
 
         User user = new User(dto);
         user.setPassword(passwordEncoder.encode(dto.password()));

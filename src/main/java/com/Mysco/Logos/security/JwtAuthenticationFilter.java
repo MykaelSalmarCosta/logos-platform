@@ -2,6 +2,7 @@ package com.Mysco.Logos.security;
 
 import com.Mysco.Logos.model.User;
 import com.Mysco.Logos.repository.UserRepository;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,18 +39,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (token != null) {
-            String email = tokenService.getSubject(token);
+            try {
+                String email = tokenService.getSubject(token);
 
-            repository.findByEmail(email).ifPresent(user -> {
-                authenticateUser(user, request);
-            });
+                repository.findByEmail(email).ifPresent(user -> authenticateUser(user, request));
+            } catch (JWTVerificationException ex) {
+                SecurityContextHolder.clearContext();
+            }
         }
 
         filterChain.doFilter(request, response);
     }
 
     private void authenticateUser(User user, HttpServletRequest request) {
-
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         user,

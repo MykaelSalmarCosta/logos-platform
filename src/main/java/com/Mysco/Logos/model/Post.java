@@ -1,7 +1,8 @@
 package com.Mysco.Logos.model;
 
-import com.Mysco.Logos.dto.post.PostUpdateDTO;
 import com.Mysco.Logos.dto.post.PostCreateDTO;
+import com.Mysco.Logos.dto.post.PostUpdateDTO;
+import com.Mysco.Logos.exception.BusinessRuleException;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -49,7 +50,6 @@ public class Post {
     }
 
     public void atualizarInformacoes(PostUpdateDTO dados) {
-
         validarAtualizacao();
 
         if (dados.title() != null) {
@@ -58,14 +58,14 @@ public class Post {
         if (dados.content() != null) {
             this.content = dados.content();
         }
-        if (dados.curso() != null)  {
+        if (dados.curso() != null) {
             this.curso = dados.curso();
         }
     }
 
     public void validarAtualizacao() {
-        if(this.status == StatusTopico.FECHADO) {
-            throw new IllegalStateException("Post fechado não pode ser editado");
+        if (this.status == StatusTopico.FECHADO) {
+            throw new BusinessRuleException("Post fechado nao pode ser editado");
         }
     }
 
