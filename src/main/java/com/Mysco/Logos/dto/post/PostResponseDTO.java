@@ -22,7 +22,7 @@ public record PostResponseDTO(
                 post.getContent(),
                 post.getCreatedAt(),
                 post.getStatus(),
-                post.getAuthor().getUsername(),
+                post.getAuthor().getDisplayName(),
                 post.getCurso()
         );
     }
