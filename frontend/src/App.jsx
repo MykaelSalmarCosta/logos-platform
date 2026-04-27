@@ -4,16 +4,28 @@ const TOKEN_STORAGE_KEY = "logos_token";
 const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || "http://localhost:8080");
 
 const topicOptions = [
-  { value: "JAVA", label: "Tecnologia", icon: "T" },
-  { value: "SPRING_BOOT", label: "Cotidiano", icon: "C" },
-  { value: "MYSQL", label: "Livros", icon: "L" },
-  { value: "SEGURANCA", label: "Sociedade", icon: "S" },
-  { value: "API_REST", label: "Ideias", icon: "I" },
-  { value: "DEVOPS", label: "Trabalho", icon: "W" },
-  { value: "FRONTEND", label: "Cultura", icon: "A" },
+  { value: "TECNOLOGIA", label: "Tecnologia", icon: "T" },
+  { value: "COTIDIANO", label: "Cotidiano", icon: "C" },
+  { value: "LIVROS", label: "Livros", icon: "L" },
+  { value: "SOCIEDADE", label: "Sociedade", icon: "S" },
+  { value: "IDEIAS", label: "Ideias", icon: "I" },
+  { value: "TRABALHO", label: "Trabalho", icon: "W" },
+  { value: "CULTURA", label: "Cultura", icon: "A" },
 ];
 
 const topicLabels = Object.fromEntries(topicOptions.map((option) => [option.value, option.label]));
+const legacyTopicMap = {
+  JAVA: "TECNOLOGIA",
+  SPRING_BOOT: "COTIDIANO",
+  MYSQL: "LIVROS",
+  SEGURANCA: "SOCIEDADE",
+  API_REST: "IDEIAS",
+  DEVOPS: "TRABALHO",
+  FRONTEND: "CULTURA",
+};
+const legacyTopicValues = Object.fromEntries(
+  Object.entries(legacyTopicMap).map(([legacyValue, topicValue]) => [topicValue, legacyValue])
+);
 const statusLabels = {
   ABERTO: "Aberto",
   FECHADO: "Fechado",
@@ -33,7 +45,7 @@ const initialRegisterForm = {
 const initialPostForm = {
   title: "",
   content: "",
-  curso: "JAVA",
+  tema: "TECNOLOGIA",
 };
 
 class ApiClientError extends Error {
@@ -118,21 +130,22 @@ export default function App() {
 
   const visiblePosts = posts.filter((post) => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
+    const postTopic = getPostTopic(post);
     const matchesSearch =
       !normalizedSearch ||
-      [post.title, post.content, post.author, topicLabels[post.curso] || post.curso]
+      [post.title, post.content, post.author, topicLabels[postTopic] || postTopic]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch);
 
-    const matchesTopic = topicFilter === "ALL" || post.curso === topicFilter;
+    const matchesTopic = topicFilter === "ALL" || postTopic === topicFilter;
     const matchesStatus = statusFilter === "ALL" || post.status === statusFilter;
 
     return matchesSearch && matchesTopic && matchesStatus;
   });
 
   const openPostsCount = posts.filter((post) => post.status === "ABERTO").length;
-  const trackedTopicsCount = new Set(posts.map((post) => post.curso)).size;
+  const trackedTopicsCount = new Set(posts.map(getPostTopic).filter(Boolean)).size;
   const canManageActivePost =
     Boolean(profile) && Boolean(activePost) && profile.username === activePost.author;
 
@@ -276,7 +289,7 @@ export default function App() {
       const response = await apiRequest(endpoint, {
         method,
         token,
-        body: postForm,
+        body: buildPostPayload(postForm),
       });
 
       setEditorMode("create");
@@ -344,7 +357,7 @@ export default function App() {
     setPostForm({
       title: post.title,
       content: post.content,
-      curso: post.curso,
+      tema: getPostTopic(post),
     });
     setMessage({
       type: "info",
@@ -667,7 +680,8 @@ function MetricCard({ value, label }) {
 }
 
 function PostCard({ post, isActive, isOwner, onSelect }) {
-  const topicLabel = topicLabels[post.curso] || post.curso;
+  const postTopic = getPostTopic(post);
+  const topicLabel = topicLabels[postTopic] || postTopic;
 
   return (
     <button
@@ -854,11 +868,11 @@ function ComposerCard({
           <label className="field">
             <span>Tema</span>
             <select
-              value={postForm.curso}
+              value={postForm.tema}
               onChange={(event) =>
                 onChange((currentForm) => ({
                   ...currentForm,
-                  curso: event.target.value,
+                  tema: event.target.value,
                 }))
               }
             >
@@ -917,7 +931,8 @@ function ComposerCard({
 }
 
 function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
-  const topicLabel = post ? topicLabels[post.curso] || post.curso : "";
+  const postTopic = post ? getPostTopic(post) : "";
+  const topicLabel = topicLabels[postTopic] || postTopic;
 
   return (
     <section className="panel side-card side-card--detail">
@@ -973,6 +988,23 @@ function EmptyState({ title, description }) {
       <p>{description}</p>
     </div>
   );
+}
+
+function getPostTopic(post) {
+  return normalizeTopicValue(post.tema || post.curso || "");
+}
+
+function normalizeTopicValue(value) {
+  return legacyTopicMap[value] || value;
+}
+
+function buildPostPayload(postForm) {
+  return {
+    title: postForm.title,
+    content: postForm.content,
+    tema: postForm.tema,
+    curso: legacyTopicValues[postForm.tema] || postForm.tema,
+  };
 }
 
 async function apiRequest(path, options = {}) {

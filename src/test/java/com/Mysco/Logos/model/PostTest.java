@@ -19,7 +19,7 @@ class PostTest {
         PostCreateDTO dto = new PostCreateDTO(
                 "Como organizar uma API REST?",
                 "Estou estruturando o projeto em camadas e validando o fluxo principal.",
-                Curso.SPRING_BOOT
+                Tema.COTIDIANO
         );
 
         Post post = new Post(dto, author);
@@ -37,7 +37,7 @@ class PostTest {
                 new PostCreateDTO(
                         "Titulo inicial",
                         "Conteudo inicial com tamanho valido para o teste.",
-                        Curso.JAVA
+                        Tema.TECNOLOGIA
                 ),
                 author
         );
@@ -45,12 +45,12 @@ class PostTest {
         post.atualizarInformacoes(new PostUpdateDTO(
                 "Titulo atualizado",
                 "Conteudo atualizado com mais contexto para representar a regra.",
-                Curso.API_REST
+                Tema.IDEIAS
         ));
 
         assertEquals("Titulo atualizado", post.getTitle());
         assertEquals("Conteudo atualizado com mais contexto para representar a regra.", post.getContent());
-        assertEquals(Curso.API_REST, post.getCurso());
+        assertEquals(Tema.IDEIAS, post.getTema());
     }
 
     @Test
@@ -60,7 +60,7 @@ class PostTest {
                 new PostCreateDTO(
                         "Titulo inicial",
                         "Conteudo inicial com tamanho valido para o teste.",
-                        Curso.JAVA
+                        Tema.TECNOLOGIA
                 ),
                 author
         );
@@ -72,7 +72,7 @@ class PostTest {
                 () -> post.atualizarInformacoes(new PostUpdateDTO(
                         "Novo titulo",
                         "Novo conteudo com tamanho valido para o teste.",
-                        Curso.MYSQL
+                        Tema.LIVROS
                 ))
         );
 

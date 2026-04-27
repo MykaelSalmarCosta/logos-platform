@@ -29,7 +29,7 @@ public class Post {
     private String content;
 
     @Enumerated(EnumType.STRING)
-    private Curso curso;
+    private Tema tema;
 
     @Enumerated(EnumType.STRING)
     private StatusTopico status;
@@ -43,7 +43,7 @@ public class Post {
     public Post(PostCreateDTO dados, User author) {
         this.title = dados.title();
         this.content = dados.content();
-        this.curso = dados.curso();
+        this.tema = Tema.normalizar(dados.tema());
         this.author = author;
         this.status = StatusTopico.ABERTO;
         this.createdAt = LocalDateTime.now();
@@ -58,8 +58,8 @@ public class Post {
         if (dados.content() != null) {
             this.content = dados.content();
         }
-        if (dados.curso() != null) {
-            this.curso = dados.curso();
+        if (dados.tema() != null) {
+            this.tema = Tema.normalizar(dados.tema());
         }
     }
 

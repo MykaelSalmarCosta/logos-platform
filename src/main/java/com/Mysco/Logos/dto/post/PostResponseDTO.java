@@ -1,8 +1,8 @@
 package com.Mysco.Logos.dto.post;
 
-import com.Mysco.Logos.model.Curso;
 import com.Mysco.Logos.model.Post;
 import com.Mysco.Logos.model.StatusTopico;
+import com.Mysco.Logos.model.Tema;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +13,7 @@ public record PostResponseDTO(
         LocalDateTime createdAt,
         StatusTopico status,
         String author,
-        Curso curso
+        Tema tema
 ) {
     public PostResponseDTO(Post post) {
         this(
@@ -23,7 +23,7 @@ public record PostResponseDTO(
                 post.getCreatedAt(),
                 post.getStatus(),
                 post.getAuthor().getDisplayName(),
-                post.getCurso()
+                Tema.normalizar(post.getTema())
         );
     }
 }

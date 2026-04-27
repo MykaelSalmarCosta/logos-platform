@@ -1,6 +1,7 @@
 package com.Mysco.Logos.dto.post;
 
-import com.Mysco.Logos.model.Curso;
+import com.Mysco.Logos.model.Tema;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,5 +17,6 @@ public record PostCreateDTO(
         String content,
 
         @NotNull
-        Curso curso
+        @JsonAlias("curso")
+        Tema tema
 ) {}
