@@ -26,11 +26,6 @@ const legacyTopicMap = {
 const legacyTopicValues = Object.fromEntries(
   Object.entries(legacyTopicMap).map(([legacyValue, topicValue]) => [topicValue, legacyValue])
 );
-const statusLabels = {
-  ABERTO: "Aberto",
-  FECHADO: "Fechado",
-};
-
 const initialLoginForm = {
   email: "",
   password: "",
@@ -75,7 +70,7 @@ export default function App() {
   const [commentForm, setCommentForm] = useState(initialCommentForm);
   const [comments, setComments] = useState([]);
   const [editorMode, setEditorMode] = useState("create");
-  const [message, setMessage] = useState(null);
+  const [, setMessage] = useState(null);
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -163,8 +158,6 @@ export default function App() {
     return matchesSearch && matchesTopic && matchesStatus;
   });
 
-  const openPostsCount = posts.filter((post) => post.status === "ABERTO").length;
-  const trackedTopicsCount = new Set(posts.map(getPostTopic).filter(Boolean)).size;
   const canManageActivePost =
     Boolean(profile) && Boolean(activePost) && profile.username === activePost.author;
 
@@ -458,6 +451,21 @@ export default function App() {
     setPostForm(initialPostForm);
   }
 
+  function openComposer() {
+    if (!profile) {
+      openLoginModal();
+      return;
+    }
+
+    resetComposer();
+    window.setTimeout(() => {
+      document.getElementById("composer-panel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  }
+
   function openLoginModal() {
     setAuthMode("login");
     setIsAuthPanelOpen(true);
@@ -488,7 +496,7 @@ export default function App() {
           </button>
           {profile ? (
             <>
-              <button className="button button--primary button--small" type="button" onClick={resetComposer}>
+              <button className="button button--primary button--small" type="button" onClick={openComposer}>
                 Criar post
               </button>
               <span className="account-name">{profile.username}</span>
@@ -538,79 +546,97 @@ export default function App() {
         <section className="overview-bar">
           <div>
             <h2>Discussões recentes</h2>
-            <p>Ideias, dúvidas e conversas abertas.</p>
-          </div>
-
-          <div className="overview-metrics">
-            <MetricCard value={posts.length} label="posts nesta pagina" />
-            <MetricCard value={openPostsCount} label="discussoes abertas" />
-            <MetricCard value={trackedTopicsCount} label="temas ativos" />
+            <p>Escolha um tema, leia com calma e entre na conversa.</p>
           </div>
         </section>
 
-        {message ? <FeedbackBanner message={message} /> : null}
-
         <section className="social-layout">
           <aside className="left-rail">
-            <nav className="topic-nav" aria-label="Temas">
+            <nav className="rail-nav" aria-label="Navegacao principal">
               <button
-                className={`topic-link ${topicFilter === "ALL" ? "topic-link--active" : ""}`}
+                className={`rail-link ${
+                  topicFilter === "ALL" && statusFilter === "ALL" ? "rail-link--active" : ""
+                }`}
                 type="button"
-                onClick={() => setTopicFilter("ALL")}
+                onClick={() => {
+                  setPage(0);
+                  setStatusFilter("ALL");
+                  setTopicFilter("ALL");
+                }}
               >
-                <span className="topic-icon">#</span>
-                Todos os temas
+                <span className="rail-icon">H</span>
+                Inicio
               </button>
-              {topicOptions.map((topic) => (
-                <button
-                  className={`topic-link ${topicFilter === topic.value ? "topic-link--active" : ""}`}
-                  key={topic.value}
-                  type="button"
-                  onClick={() => setTopicFilter(topic.value)}
-                >
-                  <span className="topic-icon">{topic.icon}</span>
-                  {topic.label}
-                </button>
-              ))}
+              <button
+                className={`rail-link ${statusFilter === "ABERTO" ? "rail-link--active" : ""}`}
+                type="button"
+                onClick={() => {
+                  setPage(0);
+                  setStatusFilter("ABERTO");
+                }}
+              >
+                <span className="rail-icon">P</span>
+                Populares
+              </button>
+              <button
+                className="rail-link"
+                type="button"
+                onClick={() => {
+                  setStatusFilter("ALL");
+                  setTopicFilter("ALL");
+                }}
+              >
+                <span className="rail-icon">E</span>
+                Explorar
+              </button>
+              <button className="rail-link" type="button" onClick={openComposer}>
+                <span className="rail-icon">+</span>
+                Criar post
+              </button>
             </nav>
+
+            <div className="rail-section">
+              <p className="rail-label">Temas</p>
+              <nav className="topic-nav" aria-label="Temas">
+                <button
+                  className={`topic-link ${topicFilter === "ALL" ? "topic-link--active" : ""}`}
+                  type="button"
+                  onClick={() => setTopicFilter("ALL")}
+                >
+                  <span className="topic-icon">#</span>
+                  Todos os temas
+                </button>
+                {topicOptions.map((topic) => (
+                  <button
+                    className={`topic-link ${topicFilter === topic.value ? "topic-link--active" : ""}`}
+                    key={topic.value}
+                    type="button"
+                    onClick={() => setTopicFilter(topic.value)}
+                  >
+                    <span className="topic-icon">{topic.icon}</span>
+                    {topic.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <ComposerCard
+              editorMode={editorMode}
+              postForm={postForm}
+              isAuthenticated={Boolean(profile)}
+              isSubmittingPost={isSubmittingPost}
+              onChange={setPostForm}
+              onSubmit={handlePostSubmit}
+              onReset={resetComposer}
+            />
           </aside>
 
-          <section className="content-grid">
-            <div className="feed-column">
-            <div className="panel section-card">
+          <section className="main-column">
+            <section className="panel section-card">
               <div className="section-card__header">
                 <div>
-                  <h3>Posts</h3>
+                  <h3>Feed</h3>
                 </div>
-              </div>
-
-              <div className="filters">
-                <label className="field">
-                  <span>Tema</span>
-                  <select
-                    value={topicFilter}
-                    onChange={(event) => setTopicFilter(event.target.value)}
-                  >
-                    <option value="ALL">Todos</option>
-                    {topicOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Status</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value)}
-                  >
-                    <option value="ALL">Todos</option>
-                    <option value="ABERTO">Aberto</option>
-                    <option value="FECHADO">Fechado</option>
-                  </select>
-                </label>
               </div>
 
               {isLoadingPosts ? (
@@ -667,20 +693,7 @@ export default function App() {
                   Proxima pagina
                 </button>
               </div>
-            </div>
-          </div>
-
-          <aside className="side-column">
-            <ComposerCard
-              editorMode={editorMode}
-              postForm={postForm}
-              isAuthenticated={Boolean(profile)}
-              isSubmittingPost={isSubmittingPost}
-              activePost={activePost}
-              onChange={setPostForm}
-              onSubmit={handlePostSubmit}
-              onReset={resetComposer}
-            />
+            </section>
 
             <DetailCard
               post={activePost}
@@ -701,7 +714,6 @@ export default function App() {
               onSubmit={handleCommentSubmit}
               onLoginRequest={openLoginModal}
             />
-          </aside>
           </section>
         </section>
       </main>
@@ -766,24 +778,6 @@ function LogoMark() {
   );
 }
 
-function FeedbackBanner({ message }) {
-  return (
-    <div className={`feedback-banner feedback-banner--${message.type}`}>
-      <strong>{message.type === "error" ? "Ajuste rapido" : "Atualizacao"}</strong>
-      <p>{message.text}</p>
-    </div>
-  );
-}
-
-function MetricCard({ value, label }) {
-  return (
-    <article className="metric-card">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </article>
-  );
-}
-
 function PostCard({ post, isActive, isOwner, onSelect }) {
   const postTopic = getPostTopic(post);
   const topicLabel = topicLabels[postTopic] || postTopic;
@@ -794,13 +788,6 @@ function PostCard({ post, isActive, isOwner, onSelect }) {
       className={`post-card ${isActive ? "post-card--active" : ""}`}
       onClick={onSelect}
     >
-      <div className="post-card__top">
-        <span className={`badge badge--${post.status.toLowerCase()}`}>
-          {statusLabels[post.status] || post.status}
-        </span>
-        {isOwner ? <span className="badge badge--owner">seu post</span> : null}
-      </div>
-
       <h4>{post.title}</h4>
       <p>{truncate(post.content, 140)}</p>
 
@@ -808,6 +795,7 @@ function PostCard({ post, isActive, isOwner, onSelect }) {
         <span>{topicLabel}</span>
         <span>{post.author}</span>
         <span>{formatDate(post.createdAt)}</span>
+        {isOwner ? <span>seu post</span> : null}
       </div>
     </button>
   );
@@ -941,13 +929,12 @@ function ComposerCard({
   postForm,
   isAuthenticated,
   isSubmittingPost,
-  activePost,
   onChange,
   onSubmit,
   onReset,
 }) {
   return (
-    <section className="panel side-card">
+    <section className="panel side-card composer-card" id="composer-panel">
       <div className="side-card__header">
         <h3>{editorMode === "edit" ? "Editar post" : "Novo post"}</h3>
       </div>
@@ -1026,11 +1013,6 @@ function ComposerCard({
         />
       )}
 
-      {activePost ? (
-        <p className="editor-note">
-          Post selecionado: <strong>{activePost.title}</strong>
-        </p>
-      ) : null}
     </section>
   );
 }
@@ -1047,16 +1029,9 @@ function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
 
       {post ? (
         <>
-          <div className="detail-meta">
-            <span className={`badge badge--${post.status.toLowerCase()}`}>
-              {statusLabels[post.status] || post.status}
-            </span>
-            <span className="detail-chip">{topicLabel}</span>
-          </div>
-
           <h4 className="detail-title">{post.title}</h4>
           <p className="detail-author">
-            por <strong>{post.author}</strong> em {formatDate(post.createdAt)}
+            por <strong>{post.author}</strong> em {formatDate(post.createdAt)} · {topicLabel}
           </p>
           <p className="detail-content">{post.content}</p>
 

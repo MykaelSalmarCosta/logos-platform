@@ -198,24 +198,6 @@ button {
   font-weight: 800;
 }
 
-.status-pill,
-.badge,
-.detail-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  padding: 0 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-soft);
-  font-size: 0.9rem;
-}
-
-.status-pill--soft {
-  color: var(--accent);
-}
-
 .layout {
   position: relative;
   z-index: 1;
@@ -282,11 +264,8 @@ button {
 }
 
 .overview-bar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.2rem 0 1.6rem;
+  max-width: 46rem;
+  padding: 1.2rem 0 0.4rem;
 }
 
 .overview-bar h2 {
@@ -297,12 +276,6 @@ button {
   margin: 0.35rem 0 0;
 }
 
-.overview-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(9rem, 1fr));
-  gap: 0.8rem;
-}
-
 .overview-bar p,
 .section-hint,
 .detail-content,
@@ -311,9 +284,7 @@ button {
 .comment-item__meta span,
 .comment-login p,
 .empty-state p,
-.feedback-banner p,
-.editor-note,
-.session-list dd {
+.detail-author {
   color: var(--text-soft);
   line-height: 1.7;
 }
@@ -370,70 +341,45 @@ button {
   padding: 0 1rem;
 }
 
-.metric-card {
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
-  background: rgba(8, 16, 29, 0.62);
-}
-
-.metric-card strong {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-family: var(--font-display);
-  font-size: 2rem;
-}
-
-.metric-card span {
-  color: var(--text-soft);
-}
-
-.feedback-banner {
-  display: grid;
-  gap: 0.4rem;
-  margin: 1.2rem 0 0;
-  padding: 1rem 1.2rem;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-}
-
-.feedback-banner strong {
-  font-size: 0.95rem;
-}
-
-.feedback-banner--success,
-.feedback-banner--info {
-  background: rgba(101, 240, 201, 0.1);
-  border-color: rgba(101, 240, 201, 0.22);
-}
-
-.feedback-banner--error {
-  background: rgba(255, 124, 139, 0.12);
-  border-color: rgba(255, 124, 139, 0.22);
-}
-
-.feedback-banner p {
-  margin: 0;
-}
-
 .social-layout {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: minmax(18rem, 21rem) minmax(0, 1fr);
   gap: 1.4rem;
   margin-top: 1.4rem;
+  align-items: start;
 }
 
 .left-rail {
   position: sticky;
   top: 1rem;
   align-self: start;
+  display: grid;
+  gap: 1rem;
 }
 
+.rail-nav,
 .topic-nav {
   display: grid;
   gap: 0.4rem;
 }
 
+.rail-section {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rail-label {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rail-link,
 .topic-link {
   display: flex;
   align-items: center;
@@ -448,6 +394,8 @@ button {
   text-align: left;
 }
 
+.rail-link:hover,
+.rail-link--active,
 .topic-link:hover,
 .topic-link--active {
   border-color: rgba(101, 240, 201, 0.2);
@@ -455,6 +403,7 @@ button {
   color: var(--text);
 }
 
+.rail-icon,
 .topic-icon {
   display: inline-grid;
   place-items: center;
@@ -467,10 +416,10 @@ button {
   font-weight: 800;
 }
 
-.content-grid {
+.main-column {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.8fr);
-  gap: 1.4rem;
+  gap: 1rem;
+  min-width: 0;
 }
 
 .section-card,
@@ -496,15 +445,9 @@ button {
   font-size: 0.95rem;
 }
 
-.filters,
 .form-stack {
   display: grid;
   gap: 1rem;
-}
-
-.filters {
-  grid-template-columns: 1fr 0.75fr;
-  margin: 1.4rem 0;
 }
 
 .field {
@@ -512,8 +455,7 @@ button {
   gap: 0.45rem;
 }
 
-.field span,
-.session-list dt {
+.field span {
   color: var(--text-soft);
   font-size: 0.92rem;
 }
@@ -563,6 +505,7 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+  margin-top: 1.25rem;
 }
 
 .post-card {
@@ -595,42 +538,12 @@ button {
   margin: 0;
 }
 
-.post-card__top,
-.post-card__meta,
-.detail-meta {
+.post-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-}
-
-.post-card__meta {
   color: var(--text-soft);
   font-size: 0.88rem;
-}
-
-.badge {
-  min-height: 1.85rem;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.badge--aberto {
-  color: var(--accent);
-  border-color: rgba(101, 240, 201, 0.22);
-  background: rgba(101, 240, 201, 0.1);
-}
-
-.badge--fechado {
-  color: var(--danger);
-  border-color: rgba(255, 124, 139, 0.22);
-  background: rgba(255, 124, 139, 0.12);
-}
-
-.badge--owner {
-  color: var(--accent-warm);
-  border-color: rgba(255, 184, 116, 0.22);
-  background: rgba(255, 184, 116, 0.12);
 }
 
 .pagination {
@@ -639,17 +552,16 @@ button {
   color: var(--text-soft);
 }
 
-.side-column {
-  display: grid;
-  gap: 1rem;
-}
-
 .side-card {
   padding: 1.4rem;
 }
 
 .side-card--detail {
-  min-height: 22rem;
+  min-height: 0;
+}
+
+.composer-card textarea {
+  min-height: 7rem;
 }
 
 .comments-card {
@@ -730,16 +642,6 @@ button {
   pointer-events: none;
 }
 
-.session-list {
-  display: grid;
-  gap: 0.95rem;
-  margin: 1.3rem 0;
-}
-
-.session-list dd {
-  margin: 0.2rem 0 0;
-}
-
 .detail-title {
   margin-top: 1rem;
   font-size: 1.65rem;
@@ -747,20 +649,11 @@ button {
 
 .detail-author {
   margin: 0.7rem 0 1rem;
-  color: var(--text-soft);
 }
 
 .detail-content {
   margin: 0;
   white-space: pre-wrap;
-}
-
-.detail-chip {
-  color: var(--accent-warm);
-}
-
-.editor-note {
-  margin: 1rem 0 0;
 }
 
 .empty-state {
@@ -809,8 +702,6 @@ button {
 
 @media (max-width: 1120px) {
   .social-layout,
-  .content-grid,
-  .filters,
   .posts-grid {
     grid-template-columns: 1fr;
   }
@@ -831,25 +722,18 @@ button {
     justify-content: flex-start;
   }
 
-  .overview-bar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .overview-metrics {
-    width: 100%;
-  }
-
   .left-rail {
     position: static;
   }
 
+  .rail-nav,
   .topic-nav {
     display: flex;
     overflow-x: auto;
     padding-bottom: 0.35rem;
   }
 
+  .rail-link,
   .topic-link {
     flex: 0 0 auto;
     width: auto;
@@ -875,10 +759,6 @@ button {
 
   .overview-bar h2 {
     font-size: 1.65rem;
-  }
-
-  .overview-metrics {
-    grid-template-columns: 1fr;
   }
 
   .button,
