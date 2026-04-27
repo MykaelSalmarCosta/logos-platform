@@ -73,6 +73,19 @@ npm run dev
 - frontend: pode subir no Vercel usando a pasta `frontend` como raiz do projeto
 - no Vercel, defina `VITE_API_URL` com a URL publica do backend
 
+### Deploy do backend no Render com Docker
+No Render, crie o backend como **Web Service** usando o runtime **Docker**.
+
+Com Docker, o Render usa o `Dockerfile` da raiz e nao precisa de build/start command manual.
+
+Variaveis de ambiente esperadas:
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `JWT_SECRET`
+- `JWT_EXPIRATION`
+- `CORS_ALLOWED_ORIGINS`
+
 ## Objetivo do projeto
 - praticar autenticacao e autorizacao
 - evoluir uma API REST para algo com cara de produto
