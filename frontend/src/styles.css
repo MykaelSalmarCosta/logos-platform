@@ -106,10 +106,14 @@ button {
 }
 
 .logo-book {
-  fill: rgba(4, 17, 29, 0.2);
+  fill: rgba(4, 17, 29, 0.22);
   stroke: #04111d;
   stroke-linejoin: round;
-  stroke-width: 2.6;
+  stroke-width: 2;
+}
+
+.logo-pan {
+  fill: rgba(4, 17, 29, 0.12);
 }
 
 .logo-line,
@@ -118,7 +122,11 @@ button {
   stroke: #04111d;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.8;
+  stroke-width: 2.6;
+}
+
+.logo-lens {
+  stroke-width: 2.4;
 }
 
 .eyebrow {

@@ -19,4 +19,4 @@ services:
       - key: JWT_EXPIRATION
         value: 24
       - key: CORS_ALLOWED_ORIGIN_PATTERNS
-        value: https://logos-platform.vercel.app,https://logos-platform-*.vercel.app,https://logos-platform-*-mykaels-projects.vercel.app
+        value: https://logos-platform.vercel.app,https://*.vercel.app
