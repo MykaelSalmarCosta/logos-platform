@@ -160,6 +160,31 @@ button {
   align-items: center;
 }
 
+.topbar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(34vw, 32rem);
+}
+
+.topbar-search span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.topbar-search input {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(4, 12, 24, 0.75);
+  color: var(--text);
+}
+
 .topbar-link {
   min-height: 2.7rem;
   border: 0;
@@ -388,11 +413,61 @@ button {
   margin: 0;
 }
 
-.content-grid {
+.social-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+  grid-template-columns: 15rem minmax(0, 1fr);
   gap: 1.4rem;
   margin-top: 1.4rem;
+}
+
+.left-rail {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+
+.topic-nav {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.topic-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0 0.85rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-soft);
+  text-align: left;
+}
+
+.topic-link:hover,
+.topic-link--active {
+  border-color: rgba(101, 240, 201, 0.2);
+  background: rgba(101, 240, 201, 0.08);
+  color: var(--text);
+}
+
+.topic-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.8fr);
+  gap: 1.4rem;
 }
 
 .section-card,
@@ -652,6 +727,7 @@ button {
 }
 
 @media (max-width: 1120px) {
+  .social-layout,
   .content-grid,
   .filters,
   .posts-grid {
@@ -682,6 +758,26 @@ button {
   .overview-metrics {
     width: 100%;
   }
+
+  .left-rail {
+    position: static;
+  }
+
+  .topic-nav {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+  }
+
+  .topic-link {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .topbar-search {
+    order: 3;
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -706,6 +802,7 @@ button {
 
   .button,
   .tab,
+  .topbar-search,
   .field input,
   .field select,
   .field textarea {

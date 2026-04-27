@@ -3,17 +3,17 @@ import { useDeferredValue, useEffect, useState } from "react";
 const TOKEN_STORAGE_KEY = "logos_token";
 const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || "http://localhost:8080");
 
-const courseOptions = [
-  { value: "JAVA", label: "Java" },
-  { value: "SPRING_BOOT", label: "Spring Boot" },
-  { value: "MYSQL", label: "MySQL" },
-  { value: "SEGURANCA", label: "Seguranca" },
-  { value: "API_REST", label: "API REST" },
-  { value: "DEVOPS", label: "DevOps" },
-  { value: "FRONTEND", label: "Frontend" },
+const topicOptions = [
+  { value: "JAVA", label: "Tecnologia", icon: "T" },
+  { value: "SPRING_BOOT", label: "Cotidiano", icon: "C" },
+  { value: "MYSQL", label: "Livros", icon: "L" },
+  { value: "SEGURANCA", label: "Sociedade", icon: "S" },
+  { value: "API_REST", label: "Ideias", icon: "I" },
+  { value: "DEVOPS", label: "Trabalho", icon: "W" },
+  { value: "FRONTEND", label: "Cultura", icon: "A" },
 ];
 
-const courseLabels = Object.fromEntries(courseOptions.map((option) => [option.value, option.label]));
+const topicLabels = Object.fromEntries(topicOptions.map((option) => [option.value, option.label]));
 const statusLabels = {
   ABERTO: "Aberto",
   FECHADO: "Fechado",
@@ -59,7 +59,7 @@ export default function App() {
   const [editorMode, setEditorMode] = useState("create");
   const [message, setMessage] = useState(null);
   const [search, setSearch] = useState("");
-  const [courseFilter, setCourseFilter] = useState("ALL");
+  const [topicFilter, setTopicFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
@@ -120,15 +120,15 @@ export default function App() {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
     const matchesSearch =
       !normalizedSearch ||
-      [post.title, post.content, post.author, courseLabels[post.curso] || post.curso]
+      [post.title, post.content, post.author, topicLabels[post.curso] || post.curso]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch);
 
-    const matchesCourse = courseFilter === "ALL" || post.curso === courseFilter;
+    const matchesTopic = topicFilter === "ALL" || post.curso === topicFilter;
     const matchesStatus = statusFilter === "ALL" || post.status === statusFilter;
 
-    return matchesSearch && matchesCourse && matchesStatus;
+    return matchesSearch && matchesTopic && matchesStatus;
   });
 
   const openPostsCount = posts.filter((post) => post.status === "ABERTO").length;
@@ -368,11 +368,23 @@ export default function App() {
         </div>
 
         <div className="topbar__actions">
+          <label className="topbar-search" aria-label="Buscar no Logos">
+            <span>Buscar</span>
+            <input
+              type="search"
+              placeholder="Buscar no Logos"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
           <button className="topbar-link" type="button" onClick={() => setPage(0)}>
             Feed
           </button>
           {profile ? (
             <>
+              <button className="button button--primary button--small" type="button" onClick={resetComposer}>
+                Criar post
+              </button>
               <span className="account-name">{profile.username}</span>
               <button className="button button--ghost button--small" type="button" onClick={() => logout()}>
                 Sair
@@ -380,6 +392,16 @@ export default function App() {
             </>
           ) : (
             <>
+              <button
+                className="button button--ghost button--small"
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setIsAuthPanelOpen(true);
+                }}
+              >
+                Criar post
+              </button>
               <button
                 className="button button--ghost button--small"
                 type="button"
@@ -410,7 +432,7 @@ export default function App() {
         <section className="overview-bar">
           <div>
             <h2>Discussões recentes</h2>
-            <p>Leia, filtre e participe.</p>
+            <p>Ideias, dúvidas e conversas abertas.</p>
           </div>
 
           <div className="overview-metrics">
@@ -422,8 +444,33 @@ export default function App() {
 
         {message ? <FeedbackBanner message={message} /> : null}
 
-        <section className="content-grid">
-          <div className="feed-column">
+        <section className="social-layout">
+          <aside className="left-rail">
+            <nav className="topic-nav" aria-label="Temas">
+              <button
+                className={`topic-link ${topicFilter === "ALL" ? "topic-link--active" : ""}`}
+                type="button"
+                onClick={() => setTopicFilter("ALL")}
+              >
+                <span className="topic-icon">#</span>
+                Todos os temas
+              </button>
+              {topicOptions.map((topic) => (
+                <button
+                  className={`topic-link ${topicFilter === topic.value ? "topic-link--active" : ""}`}
+                  key={topic.value}
+                  type="button"
+                  onClick={() => setTopicFilter(topic.value)}
+                >
+                  <span className="topic-icon">{topic.icon}</span>
+                  {topic.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <section className="content-grid">
+            <div className="feed-column">
             <div className="panel section-card">
               <div className="section-card__header">
                 <div>
@@ -433,23 +480,13 @@ export default function App() {
 
               <div className="filters">
                 <label className="field">
-                  <span>Buscar</span>
-                  <input
-                    type="text"
-                    placeholder="Titulo, autor ou assunto"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-
-                <label className="field">
-                  <span>Curso</span>
+                  <span>Tema</span>
                   <select
-                    value={courseFilter}
-                    onChange={(event) => setCourseFilter(event.target.value)}
+                    value={topicFilter}
+                    onChange={(event) => setTopicFilter(event.target.value)}
                   >
                     <option value="ALL">Todos</option>
-                    {courseOptions.map((option) => (
+                    {topicOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -547,6 +584,7 @@ export default function App() {
               onClose={handleClosePost}
             />
           </aside>
+          </section>
         </section>
       </main>
 
@@ -629,6 +667,8 @@ function MetricCard({ value, label }) {
 }
 
 function PostCard({ post, isActive, isOwner, onSelect }) {
+  const topicLabel = topicLabels[post.curso] || post.curso;
+
   return (
     <button
       type="button"
@@ -646,7 +686,7 @@ function PostCard({ post, isActive, isOwner, onSelect }) {
       <p>{truncate(post.content, 140)}</p>
 
       <div className="post-card__meta">
-        <span>{courseLabels[post.curso] || post.curso}</span>
+        <span>{topicLabel}</span>
         <span>{post.author}</span>
         <span>{formatDate(post.createdAt)}</span>
       </div>
@@ -812,7 +852,7 @@ function ComposerCard({
           </label>
 
           <label className="field">
-            <span>Assunto principal</span>
+            <span>Tema</span>
             <select
               value={postForm.curso}
               onChange={(event) =>
@@ -822,7 +862,7 @@ function ComposerCard({
                 }))
               }
             >
-              {courseOptions.map((option) => (
+              {topicOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -877,6 +917,8 @@ function ComposerCard({
 }
 
 function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
+  const topicLabel = post ? topicLabels[post.curso] || post.curso : "";
+
   return (
     <section className="panel side-card side-card--detail">
       <div className="side-card__header">
@@ -889,7 +931,7 @@ function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
             <span className={`badge badge--${post.status.toLowerCase()}`}>
               {statusLabels[post.status] || post.status}
             </span>
-            <span className="detail-chip">{courseLabels[post.curso] || post.curso}</span>
+            <span className="detail-chip">{topicLabel}</span>
           </div>
 
           <h4 className="detail-title">{post.title}</h4>
