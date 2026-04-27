@@ -173,14 +173,6 @@ button {
   font-weight: 800;
 }
 
-.auth-popover {
-  position: absolute;
-  top: calc(100% + 0.7rem);
-  right: 0;
-  z-index: 5;
-  width: min(24rem, calc(100vw - 2.4rem));
-}
-
 .status-pill,
 .badge,
 .detail-chip {
@@ -210,6 +202,58 @@ button {
   background: var(--surface);
   backdrop-filter: blur(24px);
   box-shadow: var(--shadow);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: rgba(2, 8, 18, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.auth-modal {
+  width: min(100%, 28rem);
+  max-height: calc(100vh - 2.4rem);
+  overflow: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: rgba(8, 18, 32, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.auth-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.2rem 0;
+}
+
+.auth-modal__header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.modal-close {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.auth-card {
+  padding: 1.2rem;
 }
 
 .overview-bar {
