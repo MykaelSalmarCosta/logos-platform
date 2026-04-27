@@ -63,6 +63,7 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [activePost, setActivePost] = useState(null);
+  const [isPostViewOpen, setIsPostViewOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [loginForm, setLoginForm] = useState(initialLoginForm);
   const [registerForm, setRegisterForm] = useState(initialRegisterForm);
@@ -101,11 +102,11 @@ export default function App() {
   useEffect(() => {
     if (!posts.length) {
       setActivePost(null);
+      setIsPostViewOpen(false);
       return;
     }
 
     if (!activePost) {
-      setActivePost(posts[0]);
       return;
     }
 
@@ -119,13 +120,13 @@ export default function App() {
   useEffect(() => {
     const postId = activePost?.id;
 
-    if (!postId) {
+    if (!postId || !isPostViewOpen) {
       setComments([]);
       return;
     }
 
     void loadComments(postId);
-  }, [activePost?.id]);
+  }, [activePost?.id, isPostViewOpen]);
 
   useEffect(() => {
     if (!isAuthPanelOpen) {
@@ -326,6 +327,7 @@ export default function App() {
       setPage(0);
       await loadPosts(0);
       setActivePost(response);
+      setIsPostViewOpen(true);
       setMessage({
         type: "success",
         text:
@@ -434,6 +436,7 @@ export default function App() {
 
   function startEditing(post) {
     setActivePost(post);
+    setIsPostViewOpen(true);
     setEditorMode("edit");
     setPostForm({
       title: post.title,
@@ -449,6 +452,19 @@ export default function App() {
   function resetComposer() {
     setEditorMode("create");
     setPostForm(initialPostForm);
+  }
+
+  function openPost(post) {
+    setActivePost(post);
+    setIsPostViewOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closePostView() {
+    setIsPostViewOpen(false);
+    setActivePost(null);
+    setCommentForm(initialCommentForm);
+    setComments([]);
   }
 
   function openComposer() {
@@ -491,7 +507,14 @@ export default function App() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          <button className="topbar-link" type="button" onClick={() => setPage(0)}>
+          <button
+            className="topbar-link"
+            type="button"
+            onClick={() => {
+              closePostView();
+              setPage(0);
+            }}
+          >
             Feed
           </button>
           {profile ? (
@@ -559,6 +582,7 @@ export default function App() {
                 }`}
                 type="button"
                 onClick={() => {
+                  closePostView();
                   setPage(0);
                   setStatusFilter("ALL");
                   setTopicFilter("ALL");
@@ -571,6 +595,7 @@ export default function App() {
                 className={`rail-link ${statusFilter === "ABERTO" ? "rail-link--active" : ""}`}
                 type="button"
                 onClick={() => {
+                  closePostView();
                   setPage(0);
                   setStatusFilter("ABERTO");
                 }}
@@ -582,6 +607,7 @@ export default function App() {
                 className="rail-link"
                 type="button"
                 onClick={() => {
+                  closePostView();
                   setStatusFilter("ALL");
                   setTopicFilter("ALL");
                 }}
@@ -601,7 +627,10 @@ export default function App() {
                 <button
                   className={`topic-link ${topicFilter === "ALL" ? "topic-link--active" : ""}`}
                   type="button"
-                  onClick={() => setTopicFilter("ALL")}
+                  onClick={() => {
+                    closePostView();
+                    setTopicFilter("ALL");
+                  }}
                 >
                   <span className="topic-icon">#</span>
                   Todos os temas
@@ -611,7 +640,10 @@ export default function App() {
                     className={`topic-link ${topicFilter === topic.value ? "topic-link--active" : ""}`}
                     key={topic.value}
                     type="button"
-                    onClick={() => setTopicFilter(topic.value)}
+                    onClick={() => {
+                      closePostView();
+                      setTopicFilter(topic.value);
+                    }}
                   >
                     <span className="topic-icon">{topic.icon}</span>
                     {topic.label}
@@ -632,88 +664,92 @@ export default function App() {
           </aside>
 
           <section className="main-column">
-            <section className="panel section-card">
-              <div className="section-card__header">
-                <div>
-                  <h3>Feed</h3>
-                </div>
-              </div>
-
-              {isLoadingPosts ? (
-                <div className="posts-grid">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div className="post-card post-card--skeleton" key={index}>
-                      <div className="skeleton-line skeleton-line--short" />
-                      <div className="skeleton-line" />
-                      <div className="skeleton-line" />
-                    </div>
-                  ))}
-                </div>
-              ) : visiblePosts.length ? (
-                <div className="posts-grid">
-                  {visiblePosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      isActive={activePost?.id === post.id}
-                      isOwner={profile?.username === post.author}
-                      onSelect={() => setActivePost(post)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="Nenhum post encontrado"
-                  description="Tente mudar os filtros ou publicar uma nova discussao."
+            {isPostViewOpen && activePost ? (
+              <>
+                <DetailCard
+                  post={activePost}
+                  isAuthenticated={Boolean(profile)}
+                  canManage={canManageActivePost}
+                  onBack={closePostView}
+                  onEdit={startEditing}
+                  onClose={handleClosePost}
                 />
-              )}
 
-              <div className="pagination">
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 0))}
-                  disabled={page === 0}
-                >
-                  Pagina anterior
-                </button>
-                <span>
-                  Pagina {page + 1} de {totalPages}
-                </span>
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() =>
-                    setPage((currentPage) =>
-                      currentPage + 1 >= totalPages ? currentPage : currentPage + 1
-                    )
-                  }
-                  disabled={page + 1 >= totalPages}
-                >
-                  Proxima pagina
-                </button>
-              </div>
-            </section>
+                <CommentsCard
+                  post={activePost}
+                  comments={comments}
+                  commentForm={commentForm}
+                  isAuthenticated={Boolean(profile)}
+                  isLoadingComments={isLoadingComments}
+                  isSubmittingComment={isSubmittingComment}
+                  onChange={setCommentForm}
+                  onSubmit={handleCommentSubmit}
+                  onLoginRequest={openLoginModal}
+                />
+              </>
+            ) : (
+              <section className="panel section-card">
+                <div className="section-card__header">
+                  <div>
+                    <h3>Feed</h3>
+                  </div>
+                </div>
 
-            <DetailCard
-              post={activePost}
-              isAuthenticated={Boolean(profile)}
-              canManage={canManageActivePost}
-              onEdit={startEditing}
-              onClose={handleClosePost}
-            />
+                {isLoadingPosts ? (
+                  <div className="posts-grid">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div className="post-card post-card--skeleton" key={index}>
+                        <div className="skeleton-line skeleton-line--short" />
+                        <div className="skeleton-line" />
+                        <div className="skeleton-line" />
+                      </div>
+                    ))}
+                  </div>
+                ) : visiblePosts.length ? (
+                  <div className="posts-grid">
+                    {visiblePosts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        isOwner={profile?.username === post.author}
+                        onSelect={() => openPost(post)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Nenhum post encontrado"
+                    description="Tente mudar os filtros ou publicar uma nova discussao."
+                  />
+                )}
 
-            <CommentsCard
-              post={activePost}
-              comments={comments}
-              commentForm={commentForm}
-              isAuthenticated={Boolean(profile)}
-              isLoadingComments={isLoadingComments}
-              isSubmittingComment={isSubmittingComment}
-              onChange={setCommentForm}
-              onSubmit={handleCommentSubmit}
-              onLoginRequest={openLoginModal}
-            />
+                <div className="pagination">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 0))}
+                    disabled={page === 0}
+                  >
+                    Pagina anterior
+                  </button>
+                  <span>
+                    Pagina {page + 1} de {totalPages}
+                  </span>
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() =>
+                      setPage((currentPage) =>
+                        currentPage + 1 >= totalPages ? currentPage : currentPage + 1
+                      )
+                    }
+                    disabled={page + 1 >= totalPages}
+                  >
+                    Proxima pagina
+                  </button>
+                </div>
+              </section>
+            )}
           </section>
         </section>
       </main>
@@ -778,23 +814,28 @@ function LogoMark() {
   );
 }
 
-function PostCard({ post, isActive, isOwner, onSelect }) {
+function PostCard({ post, isOwner, onSelect }) {
   const postTopic = getPostTopic(post);
   const topicLabel = topicLabels[postTopic] || postTopic;
 
   return (
     <button
       type="button"
-      className={`post-card ${isActive ? "post-card--active" : ""}`}
+      className="post-card"
       onClick={onSelect}
     >
-      <h4>{post.title}</h4>
-      <p>{truncate(post.content, 140)}</p>
-
-      <div className="post-card__meta">
+      <div className="post-card__meta post-card__meta--top">
         <span>{topicLabel}</span>
         <span>{post.author}</span>
         <span>{formatDate(post.createdAt)}</span>
+      </div>
+
+      <h4>{post.title}</h4>
+      <p>{truncate(post.content, 140)}</p>
+
+      <div className="post-actions">
+        <span className="action-pill">Abrir conversa</span>
+        <span className="action-pill">Comentarios</span>
         {isOwner ? <span>seu post</span> : null}
       </div>
     </button>
@@ -1017,21 +1058,27 @@ function ComposerCard({
   );
 }
 
-function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
+function DetailCard({ post, isAuthenticated, canManage, onBack, onEdit, onClose }) {
   const postTopic = post ? getPostTopic(post) : "";
   const topicLabel = topicLabels[postTopic] || postTopic;
 
   return (
-    <section className="panel side-card side-card--detail">
-      <div className="side-card__header">
-        <h3>{post ? "Post" : "Escolha um post"}</h3>
+    <section className="panel side-card side-card--detail thread-card">
+      <div className="thread-header">
+        <button className="back-button" type="button" onClick={onBack} aria-label="Voltar para o feed">
+          Voltar
+        </button>
+        <div>
+          <p>{post ? topicLabel : "Post"}</p>
+          <h3>{post ? post.author : "Escolha um post"}</h3>
+        </div>
       </div>
 
       {post ? (
         <>
           <h4 className="detail-title">{post.title}</h4>
           <p className="detail-author">
-            por <strong>{post.author}</strong> em {formatDate(post.createdAt)} · {topicLabel}
+            por <strong>{post.author}</strong> em {formatDate(post.createdAt)} - {topicLabel}
           </p>
           <p className="detail-content">{post.content}</p>
 
@@ -1086,26 +1133,6 @@ function CommentsCard({
         />
       ) : (
         <>
-          <div className="comments-list">
-            {isLoadingComments ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div className="comment-item comment-item--skeleton" key={index}>
-                  <div className="skeleton-line skeleton-line--short" />
-                  <div className="skeleton-line" />
-                </div>
-              ))
-            ) : comments.length ? (
-              comments.map((comment) => (
-                <CommentItem comment={comment} key={comment.id} />
-              ))
-            ) : (
-              <EmptyState
-                title="Ainda sem comentarios"
-                description="Se a conversa te chamou, puxa o primeiro fio."
-              />
-            )}
-          </div>
-
           {isAuthenticated ? (
             <form className="comment-form" onSubmit={onSubmit}>
               <label className="field">
@@ -1137,6 +1164,26 @@ function CommentsCard({
               </button>
             </div>
           )}
+
+          <div className="comments-list">
+            {isLoadingComments ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div className="comment-item comment-item--skeleton" key={index}>
+                  <div className="skeleton-line skeleton-line--short" />
+                  <div className="skeleton-line" />
+                </div>
+              ))
+            ) : comments.length ? (
+              comments.map((comment) => (
+                <CommentItem comment={comment} key={comment.id} />
+              ))
+            ) : (
+              <EmptyState
+                title="Ainda sem comentarios"
+                description="Se a conversa te chamou, puxa o primeiro fio."
+              />
+            )}
+          </div>
         </>
       )}
     </section>
