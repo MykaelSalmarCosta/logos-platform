@@ -101,6 +101,21 @@ export default function App() {
     }
   }, [posts, activePost]);
 
+  useEffect(() => {
+    if (!isAuthPanelOpen) {
+      return undefined;
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsAuthPanelOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isAuthPanelOpen]);
+
   const visiblePosts = posts.filter((post) => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
     const matchesSearch =
@@ -370,7 +385,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setAuthMode("login");
-                  setIsAuthPanelOpen((current) => !current);
+                  setIsAuthPanelOpen(true);
                 }}
               >
                 Entrar
@@ -389,21 +404,6 @@ export default function App() {
           )}
         </div>
 
-        {!profile && isAuthPanelOpen ? (
-          <div className="auth-popover">
-            <AuthCard
-              authMode={authMode}
-              loginForm={loginForm}
-              registerForm={registerForm}
-              isSubmittingAuth={isSubmittingAuth}
-              onModeChange={setAuthMode}
-              onLoginFormChange={setLoginForm}
-              onRegisterFormChange={setRegisterForm}
-              onLogin={handleLogin}
-              onRegister={handleRegister}
-            />
-          </div>
-        ) : null}
       </header>
 
       <main className="layout">
@@ -549,6 +549,43 @@ export default function App() {
           </aside>
         </section>
       </main>
+
+      {!profile && isAuthPanelOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsAuthPanelOpen(false);
+            }
+          }}
+        >
+          <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+            <div className="auth-modal__header">
+              <h2 id="auth-title">{authMode === "login" ? "Entrar" : "Criar conta"}</h2>
+              <button
+                className="modal-close"
+                type="button"
+                aria-label="Fechar"
+                onClick={() => setIsAuthPanelOpen(false)}
+              >
+                X
+              </button>
+            </div>
+            <AuthCard
+              authMode={authMode}
+              loginForm={loginForm}
+              registerForm={registerForm}
+              isSubmittingAuth={isSubmittingAuth}
+              onModeChange={setAuthMode}
+              onLoginFormChange={setLoginForm}
+              onRegisterFormChange={setRegisterForm}
+              onLogin={handleLogin}
+              onRegister={handleRegister}
+            />
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -629,11 +666,7 @@ function AuthCard({
   onRegister,
 }) {
   return (
-    <section className="panel side-card">
-      <div className="side-card__header">
-        <h3>{authMode === "login" ? "Entrar" : "Criar conta"}</h3>
-      </div>
-
+    <section className="auth-card">
       <div className="tab-group" role="tablist" aria-label="Acesso">
         <button
           type="button"
