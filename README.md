@@ -72,6 +72,8 @@ npm run dev
 - backend: pode subir em uma plataforma Java e liberar a URL publica da API
 - frontend: pode subir no Vercel usando a pasta `frontend` como raiz do projeto
 - no Vercel, defina `VITE_API_URL` com a URL publica do backend
+- demo atual do frontend: `https://logos-platform.vercel.app`
+- API atual no Render: `https://logos-platform-7jna.onrender.com`
 
 ### Deploy do backend no Render com Docker
 No Render, crie o backend como **Web Service** usando o runtime **Docker**.
