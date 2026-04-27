@@ -48,6 +48,10 @@ const initialPostForm = {
   tema: "TECNOLOGIA",
 };
 
+const initialCommentForm = {
+  content: "",
+};
+
 class ApiClientError extends Error {
   constructor(message, status, payload) {
     super(message);
@@ -68,6 +72,8 @@ export default function App() {
   const [loginForm, setLoginForm] = useState(initialLoginForm);
   const [registerForm, setRegisterForm] = useState(initialRegisterForm);
   const [postForm, setPostForm] = useState(initialPostForm);
+  const [commentForm, setCommentForm] = useState(initialCommentForm);
+  const [comments, setComments] = useState([]);
   const [editorMode, setEditorMode] = useState("create");
   const [message, setMessage] = useState(null);
   const [search, setSearch] = useState("");
@@ -75,8 +81,10 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const deferredSearch = useDeferredValue(search);
 
@@ -112,6 +120,17 @@ export default function App() {
       setActivePost(refreshedPost);
     }
   }, [posts, activePost]);
+
+  useEffect(() => {
+    const postId = activePost?.id;
+
+    if (!postId) {
+      setComments([]);
+      return;
+    }
+
+    void loadComments(postId);
+  }, [activePost?.id]);
 
   useEffect(() => {
     if (!isAuthPanelOpen) {
@@ -195,6 +214,23 @@ export default function App() {
         type: "error",
         text: error.message || "Nao foi possivel atualizar o post selecionado.",
       });
+    }
+  }
+
+  async function loadComments(postId) {
+    setIsLoadingComments(true);
+
+    try {
+      const response = await apiRequest(`/posts/${postId}/comments`);
+      setComments(response || []);
+    } catch (error) {
+      setComments([]);
+      setMessage({
+        type: "error",
+        text: error.message || "Nao foi possivel carregar os comentarios.",
+      });
+    } finally {
+      setIsLoadingComments(false);
     }
   }
 
@@ -351,6 +387,58 @@ export default function App() {
     }
   }
 
+  async function handleCommentSubmit(event) {
+    event.preventDefault();
+
+    if (!activePost) {
+      return;
+    }
+
+    if (!token) {
+      setAuthMode("login");
+      setIsAuthPanelOpen(true);
+      setMessage({
+        type: "info",
+        text: "Entre com sua conta para comentar.",
+      });
+      return;
+    }
+
+    const content = commentForm.content.trim();
+
+    if (!content) {
+      return;
+    }
+
+    setIsSubmittingComment(true);
+
+    try {
+      const response = await apiRequest(`/posts/${activePost.id}/comments`, {
+        method: "POST",
+        token,
+        body: { content },
+      });
+
+      setComments((currentComments) => [...currentComments, response]);
+      setCommentForm(initialCommentForm);
+      setMessage({
+        type: "success",
+        text: "Comentario publicado.",
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        logout("Sua sessao expirou. Faça login para continuar.");
+      } else {
+        setMessage({
+          type: "error",
+          text: error.message || "Nao foi possivel publicar o comentario.",
+        });
+      }
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  }
+
   function startEditing(post) {
     setActivePost(post);
     setEditorMode("edit");
@@ -368,6 +456,11 @@ export default function App() {
   function resetComposer() {
     setEditorMode("create");
     setPostForm(initialPostForm);
+  }
+
+  function openLoginModal() {
+    setAuthMode("login");
+    setIsAuthPanelOpen(true);
   }
 
   return (
@@ -595,6 +688,18 @@ export default function App() {
               canManage={canManageActivePost}
               onEdit={startEditing}
               onClose={handleClosePost}
+            />
+
+            <CommentsCard
+              post={activePost}
+              comments={comments}
+              commentForm={commentForm}
+              isAuthenticated={Boolean(profile)}
+              isLoadingComments={isLoadingComments}
+              isSubmittingComment={isSubmittingComment}
+              onChange={setCommentForm}
+              onSubmit={handleCommentSubmit}
+              onLoginRequest={openLoginModal}
             />
           </aside>
           </section>
@@ -978,6 +1083,100 @@ function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
         />
       )}
     </section>
+  );
+}
+
+function CommentsCard({
+  post,
+  comments,
+  commentForm,
+  isAuthenticated,
+  isLoadingComments,
+  isSubmittingComment,
+  onChange,
+  onSubmit,
+  onLoginRequest,
+}) {
+  return (
+    <section className="panel side-card comments-card">
+      <div className="side-card__header">
+        <h3>Comentarios</h3>
+        <span className="comment-count">{comments.length}</span>
+      </div>
+
+      {!post ? (
+        <EmptyState
+          title="Nada aberto ainda"
+          description="Escolha um post para acompanhar a conversa."
+        />
+      ) : (
+        <>
+          <div className="comments-list">
+            {isLoadingComments ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div className="comment-item comment-item--skeleton" key={index}>
+                  <div className="skeleton-line skeleton-line--short" />
+                  <div className="skeleton-line" />
+                </div>
+              ))
+            ) : comments.length ? (
+              comments.map((comment) => (
+                <CommentItem comment={comment} key={comment.id} />
+              ))
+            ) : (
+              <EmptyState
+                title="Ainda sem comentarios"
+                description="Se a conversa te chamou, puxa o primeiro fio."
+              />
+            )}
+          </div>
+
+          {isAuthenticated ? (
+            <form className="comment-form" onSubmit={onSubmit}>
+              <label className="field">
+                <span>Responder</span>
+                <textarea
+                  rows="4"
+                  maxLength="1600"
+                  value={commentForm.content}
+                  onChange={(event) =>
+                    onChange((currentForm) => ({
+                      ...currentForm,
+                      content: event.target.value,
+                    }))
+                  }
+                  placeholder="Escreva um comentario..."
+                  required
+                />
+              </label>
+
+              <button className="button button--primary" type="submit" disabled={isSubmittingComment}>
+                {isSubmittingComment ? "Enviando..." : "Comentar"}
+              </button>
+            </form>
+          ) : (
+            <div className="comment-login">
+              <p>Entre para participar da conversa.</p>
+              <button className="button button--secondary" type="button" onClick={onLoginRequest}>
+                Entrar
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function CommentItem({ comment }) {
+  return (
+    <article className="comment-item">
+      <div className="comment-item__meta">
+        <strong>{comment.author}</strong>
+        <span>{formatDate(comment.createdAt)}</span>
+      </div>
+      <p>{comment.content}</p>
+    </article>
   );
 }
 
