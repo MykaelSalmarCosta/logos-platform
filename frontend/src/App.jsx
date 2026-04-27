@@ -61,8 +61,8 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(Boolean(token));
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
@@ -140,8 +140,6 @@ export default function App() {
   }
 
   async function loadProfile(currentToken) {
-    setIsLoadingProfile(true);
-
     try {
       const response = await apiRequest("/users/me", { token: currentToken });
       setProfile(response);
@@ -154,8 +152,6 @@ export default function App() {
           text: error.message || "Nao foi possivel carregar a sessao atual.",
         });
       }
-    } finally {
-      setIsLoadingProfile(false);
     }
   }
 
@@ -194,9 +190,10 @@ export default function App() {
 
       setToken(response.token);
       setLoginForm(initialLoginForm);
+      setIsAuthPanelOpen(false);
       setMessage({
         type: "success",
-        text: "Login realizado. Agora voce pode publicar e editar seus posts.",
+        text: "Login realizado.",
       });
     } catch (error) {
       setMessage({
@@ -228,9 +225,10 @@ export default function App() {
 
       setToken(response.token);
       setRegisterForm(initialRegisterForm);
+      setIsAuthPanelOpen(false);
       setMessage({
         type: "success",
-        text: "Conta criada com sucesso. Sua sessao ja esta ativa.",
+        text: "Conta criada com sucesso.",
       });
     } catch (error) {
       setMessage({
@@ -346,58 +344,76 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="background-orb background-orb--one" />
-      <div className="background-orb background-orb--two" />
       <div className="background-grid" />
 
       <header className="topbar">
         <div className="brand-block">
-          <span className="brand-mark">L</span>
-          <div>
-            <p className="eyebrow">forum api + interface web</p>
-            <h1>Logos Platform</h1>
-          </div>
+          <LogoMark />
+          <h1>Logos</h1>
         </div>
 
-        <div className="topbar__status">
-          <span className="status-pill">
-            {profile ? `Sessao ativa: ${profile.username}` : "Leitura publica liberada"}
-          </span>
-          <span className="status-pill status-pill--soft">API: {API_URL}</span>
+        <div className="topbar__actions">
+          <button className="topbar-link" type="button" onClick={() => setPage(0)}>
+            Feed
+          </button>
+          {profile ? (
+            <>
+              <span className="account-name">{profile.username}</span>
+              <button className="button button--ghost button--small" type="button" onClick={() => logout()}>
+                Sair
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="button button--ghost button--small"
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setIsAuthPanelOpen((current) => !current);
+                }}
+              >
+                Entrar
+              </button>
+              <button
+                className="button button--primary button--small"
+                type="button"
+                onClick={() => {
+                  setAuthMode("register");
+                  setIsAuthPanelOpen(true);
+                }}
+              >
+                Criar conta
+              </button>
+            </>
+          )}
         </div>
+
+        {!profile && isAuthPanelOpen ? (
+          <div className="auth-popover">
+            <AuthCard
+              authMode={authMode}
+              loginForm={loginForm}
+              registerForm={registerForm}
+              isSubmittingAuth={isSubmittingAuth}
+              onModeChange={setAuthMode}
+              onLoginFormChange={setLoginForm}
+              onRegisterFormChange={setRegisterForm}
+              onLogin={handleLogin}
+              onRegister={handleRegister}
+            />
+          </div>
+        ) : null}
       </header>
 
       <main className="layout">
-        <section className="hero-card panel">
-          <div className="hero-card__content">
-            <p className="eyebrow">debate, estudo e autoria</p>
-            <h2>
-              Uma interface para transformar a API do Logos em produto de verdade.
-            </h2>
-            <p className="hero-copy">
-              O feed fica aberto para leitura, enquanto o login libera cadastro, publicacao,
-              edicao e fechamento dos seus posts. A ideia aqui foi dar cara de plataforma ao que
-              antes era so backend.
-            </p>
-
-            <div className="hero-actions">
-              <button className="button button--primary" type="button" onClick={() => setPage(0)}>
-                Ver feed
-              </button>
-              <button
-                className="button button--secondary"
-                type="button"
-                onClick={() => {
-                  setAuthMode(profile ? "login" : "register");
-                  resetComposer();
-                }}
-              >
-                {profile ? "Novo post" : "Criar conta"}
-              </button>
-            </div>
+        <section className="overview-bar">
+          <div>
+            <h2>Discussões recentes</h2>
+            <p>Leia, filtre e participe.</p>
           </div>
 
-          <div className="hero-metrics">
+          <div className="overview-metrics">
             <MetricCard value={posts.length} label="posts nesta pagina" />
             <MetricCard value={openPostsCount} label="discussoes abertas" />
             <MetricCard value={trackedTopicsCount} label="temas ativos" />
@@ -411,12 +427,8 @@ export default function App() {
             <div className="panel section-card">
               <div className="section-card__header">
                 <div>
-                  <p className="eyebrow">feed</p>
-                  <h3>Ultimos posts publicados</h3>
+                  <h3>Posts</h3>
                 </div>
-                <p className="section-hint">
-                  Explore o conteudo livremente. Para publicar, basta entrar com sua conta.
-                </p>
               </div>
 
               <div className="filters">
@@ -516,26 +528,6 @@ export default function App() {
           </div>
 
           <aside className="side-column">
-            {profile ? (
-              <SessionCard
-                profile={profile}
-                isLoadingProfile={isLoadingProfile}
-                onLogout={() => logout()}
-              />
-            ) : (
-              <AuthCard
-                authMode={authMode}
-                loginForm={loginForm}
-                registerForm={registerForm}
-                isSubmittingAuth={isSubmittingAuth}
-                onModeChange={setAuthMode}
-                onLoginFormChange={setLoginForm}
-                onRegisterFormChange={setRegisterForm}
-                onLogin={handleLogin}
-                onRegister={handleRegister}
-              />
-            )}
-
             <ComposerCard
               editorMode={editorMode}
               postForm={postForm}
@@ -558,6 +550,24 @@ export default function App() {
         </section>
       </main>
     </div>
+  );
+}
+
+function LogoMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 64 64" role="img">
+        <path className="logo-book" d="M10 42c7-3 15-3 22 1V24c-7-4-15-4-22-1v19Z" />
+        <path className="logo-book" d="M54 42c-7-3-15-3-22 1V24c7-4 15-4 22-1v19Z" />
+        <path className="logo-line" d="M32 24v21" />
+        <path className="logo-line" d="M32 14v28" />
+        <path className="logo-line" d="M20 19h24" />
+        <path className="logo-line" d="M20 19l-7 12h14l-7-12Z" />
+        <path className="logo-line" d="M44 19l-7 12h14l-7-12Z" />
+        <circle className="logo-lens" cx="43" cy="40" r="7" />
+        <path className="logo-lens" d="m48 45 6 6" />
+      </svg>
+    </span>
   );
 }
 
@@ -619,8 +629,7 @@ function AuthCard({
   return (
     <section className="panel side-card">
       <div className="side-card__header">
-        <p className="eyebrow">acesso</p>
-        <h3>Entre para participar</h3>
+        <h3>{authMode === "login" ? "Entrar" : "Criar conta"}</h3>
       </div>
 
       <div className="tab-group" role="tablist" aria-label="Acesso">
@@ -733,32 +742,6 @@ function AuthCard({
   );
 }
 
-function SessionCard({ profile, isLoadingProfile, onLogout }) {
-  return (
-    <section className="panel side-card">
-      <div className="side-card__header">
-        <p className="eyebrow">sua sessao</p>
-        <h3>{isLoadingProfile ? "Atualizando..." : profile.username}</h3>
-      </div>
-
-      <dl className="session-list">
-        <div>
-          <dt>Email</dt>
-          <dd>{profile.email}</dd>
-        </div>
-        <div>
-          <dt>Conta criada</dt>
-          <dd>{profile.createdAt ? formatDate(profile.createdAt) : "Agora"}</dd>
-        </div>
-      </dl>
-
-      <button className="button button--ghost" type="button" onClick={onLogout}>
-        Sair
-      </button>
-    </section>
-  );
-}
-
 function ComposerCard({
   editorMode,
   postForm,
@@ -772,8 +755,7 @@ function ComposerCard({
   return (
     <section className="panel side-card">
       <div className="side-card__header">
-        <p className="eyebrow">editor</p>
-        <h3>{editorMode === "edit" ? "Editar post" : "Criar novo post"}</h3>
+        <h3>{editorMode === "edit" ? "Editar post" : "Novo post"}</h3>
       </div>
 
       {isAuthenticated ? (
@@ -846,7 +828,7 @@ function ComposerCard({
       ) : (
         <EmptyState
           title="Entre para publicar"
-          description="O feed esta aberto, mas a escrita fica liberada depois do login."
+          description="Use o botao Entrar no topo."
         />
       )}
 
@@ -863,8 +845,7 @@ function DetailCard({ post, isAuthenticated, canManage, onEdit, onClose }) {
   return (
     <section className="panel side-card side-card--detail">
       <div className="side-card__header">
-        <p className="eyebrow">destaque</p>
-        <h3>{post ? "Post selecionado" : "Escolha um post"}</h3>
+        <h3>{post ? "Post" : "Escolha um post"}</h3>
       </div>
 
       {post ? (

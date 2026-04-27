@@ -50,7 +50,7 @@ Defina as variaveis usadas em `application.properties`:
 - `DB_PASSWORD`
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
-- `CORS_ALLOWED_ORIGINS`
+- `CORS_ALLOWED_ORIGIN_PATTERNS`
 
 Depois rode a API com Maven.
 
@@ -86,7 +86,7 @@ Variaveis de ambiente esperadas:
 - `DB_PASSWORD`
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
-- `CORS_ALLOWED_ORIGINS`
+- `CORS_ALLOWED_ORIGIN_PATTERNS`
 
 ## Objetivo do projeto
 - praticar autenticacao e autorizacao

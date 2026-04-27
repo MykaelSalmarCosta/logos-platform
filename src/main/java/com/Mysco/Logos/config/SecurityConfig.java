@@ -31,8 +31,8 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
-    private List<String> allowedOrigins;
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:5173,http://127.0.0.1:5173,https://logos-platform.vercel.app,https://logos-platform-*.vercel.app,https://logos-platform-*-mykaels-projects.vercel.app}")
+    private List<String> allowedOriginPatterns;
 
     public SecurityConfig(
             UserDetailsService userDetailsService,
@@ -81,7 +81,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Location"));
