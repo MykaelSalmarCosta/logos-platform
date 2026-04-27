@@ -232,6 +232,16 @@ button {
   box-shadow: var(--shadow);
 }
 
+.composer-modal {
+  width: min(100%, 42rem);
+  max-height: calc(100vh - 2.4rem);
+  overflow: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: rgba(8, 18, 32, 0.96);
+  box-shadow: var(--shadow);
+}
+
 .auth-modal__header {
   display: flex;
   align-items: center;
@@ -614,6 +624,10 @@ button {
 
 .composer-card textarea {
   min-height: 7rem;
+}
+
+.composer-card {
+  padding: 1.2rem;
 }
 
 .comments-card {

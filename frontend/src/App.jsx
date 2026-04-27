@@ -1,60 +1,22 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
-const TOKEN_STORAGE_KEY = "logos_token";
-const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || "http://localhost:8080");
-
-const topicOptions = [
-  { value: "TECNOLOGIA", label: "Tecnologia", icon: "T" },
-  { value: "COTIDIANO", label: "Cotidiano", icon: "C" },
-  { value: "LIVROS", label: "Livros", icon: "L" },
-  { value: "SOCIEDADE", label: "Sociedade", icon: "S" },
-  { value: "IDEIAS", label: "Ideias", icon: "I" },
-  { value: "TRABALHO", label: "Trabalho", icon: "W" },
-  { value: "CULTURA", label: "Cultura", icon: "A" },
-];
-
-const topicLabels = Object.fromEntries(topicOptions.map((option) => [option.value, option.label]));
-const legacyTopicMap = {
-  JAVA: "TECNOLOGIA",
-  SPRING_BOOT: "COTIDIANO",
-  MYSQL: "LIVROS",
-  SEGURANCA: "SOCIEDADE",
-  API_REST: "IDEIAS",
-  DEVOPS: "TRABALHO",
-  FRONTEND: "CULTURA",
-};
-const legacyTopicValues = Object.fromEntries(
-  Object.entries(legacyTopicMap).map(([legacyValue, topicValue]) => [topicValue, legacyValue])
-);
-const initialLoginForm = {
-  email: "",
-  password: "",
-};
-
-const initialRegisterForm = {
-  username: "",
-  email: "",
-  password: "",
-};
-
-const initialPostForm = {
-  title: "",
-  content: "",
-  tema: "TECNOLOGIA",
-};
-
-const initialCommentForm = {
-  content: "",
-};
-
-class ApiClientError extends Error {
-  constructor(message, status, payload) {
-    super(message);
-    this.name = "ApiClientError";
-    this.status = status;
-    this.payload = payload;
-  }
-}
+import { apiRequest, ApiClientError } from "./api/client";
+import { Sidebar } from "./components/Sidebar";
+import { Topbar } from "./components/Topbar";
+import {
+  initialCommentForm,
+  initialLoginForm,
+  initialPostForm,
+  initialRegisterForm,
+  TOKEN_STORAGE_KEY,
+} from "./constants/forms";
+import { topicLabels, topicOptions } from "./constants/topics";
+import { AuthModal } from "./features/auth/AuthModal";
+import { CommentsSection } from "./features/comments/CommentsSection";
+import { ComposerModal } from "./features/posts/ComposerModal";
+import { PostFeed } from "./features/posts/PostFeed";
+import { ThreadView } from "./features/posts/ThreadView";
+import { buildPostPayload, getPostTopic } from "./utils/posts";
 
 export default function App() {
   const [token, setToken] = useState(() => window.localStorage.getItem(TOKEN_STORAGE_KEY) || "");
@@ -71,11 +33,11 @@ export default function App() {
   const [commentForm, setCommentForm] = useState(initialCommentForm);
   const [comments, setComments] = useState([]);
   const [editorMode, setEditorMode] = useState("create");
-  const [, setMessage] = useState(null);
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
@@ -83,6 +45,11 @@ export default function App() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const deferredSearch = useDeferredValue(search);
+  const canManageActivePost =
+    Boolean(profile) && Boolean(activePost) && profile.username === activePost.author;
+
+  // Feedback visual ficou oculto por enquanto, mas mantemos um ponto unico para religar depois.
+  const setMessage = () => {};
 
   useEffect(() => {
     void loadPosts(page);
@@ -129,19 +96,23 @@ export default function App() {
   }, [activePost?.id, isPostViewOpen]);
 
   useEffect(() => {
-    if (!isAuthPanelOpen) {
+    if (!isAuthPanelOpen && !isComposerOpen) {
       return undefined;
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
         setIsAuthPanelOpen(false);
+
+        if (isComposerOpen) {
+          closeComposer();
+        }
       }
     }
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isAuthPanelOpen]);
+  }, [isAuthPanelOpen, isComposerOpen]);
 
   const visiblePosts = posts.filter((post) => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
@@ -158,9 +129,6 @@ export default function App() {
 
     return matchesSearch && matchesTopic && matchesStatus;
   });
-
-  const canManageActivePost =
-    Boolean(profile) && Boolean(activePost) && profile.username === activePost.author;
 
   async function loadPosts(targetPage) {
     setIsLoadingPosts(true);
@@ -233,6 +201,7 @@ export default function App() {
     setProfile(null);
     setEditorMode("create");
     setPostForm(initialPostForm);
+    setIsComposerOpen(false);
     setMessage({ type: "info", text: customMessage });
   }
 
@@ -328,6 +297,7 @@ export default function App() {
       await loadPosts(0);
       setActivePost(response);
       setIsPostViewOpen(true);
+      setIsComposerOpen(false);
       setMessage({
         type: "success",
         text:
@@ -390,8 +360,7 @@ export default function App() {
     }
 
     if (!token) {
-      setAuthMode("login");
-      setIsAuthPanelOpen(true);
+      openLoginModal();
       setMessage({
         type: "info",
         text: "Entre com sua conta para comentar.",
@@ -437,6 +406,7 @@ export default function App() {
   function startEditing(post) {
     setActivePost(post);
     setIsPostViewOpen(true);
+    setIsComposerOpen(true);
     setEditorMode("edit");
     setPostForm({
       title: post.title,
@@ -452,6 +422,11 @@ export default function App() {
   function resetComposer() {
     setEditorMode("create");
     setPostForm(initialPostForm);
+  }
+
+  function closeComposer() {
+    setIsComposerOpen(false);
+    resetComposer();
   }
 
   function openPost(post) {
@@ -474,12 +449,7 @@ export default function App() {
     }
 
     resetComposer();
-    window.setTimeout(() => {
-      document.getElementById("composer-panel")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
+    setIsComposerOpen(true);
   }
 
   function openLoginModal() {
@@ -487,83 +457,65 @@ export default function App() {
     setIsAuthPanelOpen(true);
   }
 
+  function openRegisterModal() {
+    setAuthMode("register");
+    setIsAuthPanelOpen(true);
+  }
+
+  function showFeed() {
+    closePostView();
+    setPage(0);
+  }
+
+  function showHome() {
+    closePostView();
+    setPage(0);
+    setStatusFilter("ALL");
+    setTopicFilter("ALL");
+  }
+
+  function showPopular() {
+    closePostView();
+    setPage(0);
+    setStatusFilter("ABERTO");
+  }
+
+  function showExplore() {
+    closePostView();
+    setStatusFilter("ALL");
+    setTopicFilter("ALL");
+  }
+
+  function selectTopic(topic) {
+    closePostView();
+    setPage(0);
+    setTopicFilter(topic);
+  }
+
+  function previousPage() {
+    setPage((currentPage) => Math.max(currentPage - 1, 0));
+  }
+
+  function nextPage() {
+    setPage((currentPage) =>
+      currentPage + 1 >= totalPages ? currentPage : currentPage + 1
+    );
+  }
+
   return (
     <div className="app-shell">
       <div className="background-grid" />
 
-      <header className="topbar">
-        <div className="brand-block">
-          <LogoMark />
-          <h1>Logos</h1>
-        </div>
-
-        <div className="topbar__actions">
-          <label className="topbar-search" aria-label="Buscar no Logos">
-            <span>Buscar</span>
-            <input
-              type="search"
-              placeholder="Buscar no Logos"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
-          <button
-            className="topbar-link"
-            type="button"
-            onClick={() => {
-              closePostView();
-              setPage(0);
-            }}
-          >
-            Feed
-          </button>
-          {profile ? (
-            <>
-              <button className="button button--primary button--small" type="button" onClick={openComposer}>
-                Criar post
-              </button>
-              <span className="account-name">{profile.username}</span>
-              <button className="button button--ghost button--small" type="button" onClick={() => logout()}>
-                Sair
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                onClick={() => {
-                  setAuthMode("login");
-                  setIsAuthPanelOpen(true);
-                }}
-              >
-                Criar post
-              </button>
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                onClick={() => {
-                  setAuthMode("login");
-                  setIsAuthPanelOpen(true);
-                }}
-              >
-                Entrar
-              </button>
-              <button
-                className="button button--primary button--small"
-                type="button"
-                onClick={() => {
-                  setAuthMode("register");
-                  setIsAuthPanelOpen(true);
-                }}
-              >
-                Criar conta
-              </button>
-            </>
-          )}
-        </div>
-
-      </header>
+      <Topbar
+        search={search}
+        profile={profile}
+        onSearchChange={setSearch}
+        onFeedClick={showFeed}
+        onCreatePost={openComposer}
+        onLogin={openLoginModal}
+        onRegister={openRegisterModal}
+        onLogout={() => logout()}
+      />
 
       <main className="layout">
         <section className="overview-bar">
@@ -574,99 +526,21 @@ export default function App() {
         </section>
 
         <section className="social-layout">
-          <aside className="left-rail">
-            <nav className="rail-nav" aria-label="Navegacao principal">
-              <button
-                className={`rail-link ${
-                  topicFilter === "ALL" && statusFilter === "ALL" ? "rail-link--active" : ""
-                }`}
-                type="button"
-                onClick={() => {
-                  closePostView();
-                  setPage(0);
-                  setStatusFilter("ALL");
-                  setTopicFilter("ALL");
-                }}
-              >
-                <span className="rail-icon">H</span>
-                Inicio
-              </button>
-              <button
-                className={`rail-link ${statusFilter === "ABERTO" ? "rail-link--active" : ""}`}
-                type="button"
-                onClick={() => {
-                  closePostView();
-                  setPage(0);
-                  setStatusFilter("ABERTO");
-                }}
-              >
-                <span className="rail-icon">P</span>
-                Populares
-              </button>
-              <button
-                className="rail-link"
-                type="button"
-                onClick={() => {
-                  closePostView();
-                  setStatusFilter("ALL");
-                  setTopicFilter("ALL");
-                }}
-              >
-                <span className="rail-icon">E</span>
-                Explorar
-              </button>
-              <button className="rail-link" type="button" onClick={openComposer}>
-                <span className="rail-icon">+</span>
-                Criar post
-              </button>
-            </nav>
-
-            <div className="rail-section">
-              <p className="rail-label">Temas</p>
-              <nav className="topic-nav" aria-label="Temas">
-                <button
-                  className={`topic-link ${topicFilter === "ALL" ? "topic-link--active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    closePostView();
-                    setTopicFilter("ALL");
-                  }}
-                >
-                  <span className="topic-icon">#</span>
-                  Todos os temas
-                </button>
-                {topicOptions.map((topic) => (
-                  <button
-                    className={`topic-link ${topicFilter === topic.value ? "topic-link--active" : ""}`}
-                    key={topic.value}
-                    type="button"
-                    onClick={() => {
-                      closePostView();
-                      setTopicFilter(topic.value);
-                    }}
-                  >
-                    <span className="topic-icon">{topic.icon}</span>
-                    {topic.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            <ComposerCard
-              editorMode={editorMode}
-              postForm={postForm}
-              isAuthenticated={Boolean(profile)}
-              isSubmittingPost={isSubmittingPost}
-              onChange={setPostForm}
-              onSubmit={handlePostSubmit}
-              onReset={resetComposer}
-            />
-          </aside>
+          <Sidebar
+            topicOptions={topicOptions}
+            topicFilter={topicFilter}
+            statusFilter={statusFilter}
+            onHome={showHome}
+            onPopular={showPopular}
+            onExplore={showExplore}
+            onCreatePost={openComposer}
+            onTopicSelect={selectTopic}
+          />
 
           <section className="main-column">
             {isPostViewOpen && activePost ? (
               <>
-                <DetailCard
+                <ThreadView
                   post={activePost}
                   isAuthenticated={Boolean(profile)}
                   canManage={canManageActivePost}
@@ -675,7 +549,7 @@ export default function App() {
                   onClose={handleClosePost}
                 />
 
-                <CommentsCard
+                <CommentsSection
                   post={activePost}
                   comments={comments}
                   commentForm={commentForm}
@@ -688,615 +562,48 @@ export default function App() {
                 />
               </>
             ) : (
-              <section className="panel section-card">
-                <div className="section-card__header">
-                  <div>
-                    <h3>Feed</h3>
-                  </div>
-                </div>
-
-                {isLoadingPosts ? (
-                  <div className="posts-grid">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <div className="post-card post-card--skeleton" key={index}>
-                        <div className="skeleton-line skeleton-line--short" />
-                        <div className="skeleton-line" />
-                        <div className="skeleton-line" />
-                      </div>
-                    ))}
-                  </div>
-                ) : visiblePosts.length ? (
-                  <div className="posts-grid">
-                    {visiblePosts.map((post) => (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        isOwner={profile?.username === post.author}
-                        onSelect={() => openPost(post)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="Nenhum post encontrado"
-                    description="Tente mudar os filtros ou publicar uma nova discussao."
-                  />
-                )}
-
-                <div className="pagination">
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 0))}
-                    disabled={page === 0}
-                  >
-                    Pagina anterior
-                  </button>
-                  <span>
-                    Pagina {page + 1} de {totalPages}
-                  </span>
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() =>
-                      setPage((currentPage) =>
-                        currentPage + 1 >= totalPages ? currentPage : currentPage + 1
-                      )
-                    }
-                    disabled={page + 1 >= totalPages}
-                  >
-                    Proxima pagina
-                  </button>
-                </div>
-              </section>
+              <PostFeed
+                posts={visiblePosts}
+                page={page}
+                totalPages={totalPages}
+                profile={profile}
+                isLoadingPosts={isLoadingPosts}
+                onOpenPost={openPost}
+                onPreviousPage={previousPage}
+                onNextPage={nextPage}
+              />
             )}
           </section>
         </section>
       </main>
 
       {!profile && isAuthPanelOpen ? (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setIsAuthPanelOpen(false);
-            }
-          }}
-        >
-          <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-            <div className="auth-modal__header">
-              <h2 id="auth-title">{authMode === "login" ? "Entrar" : "Criar conta"}</h2>
-              <button
-                className="modal-close"
-                type="button"
-                aria-label="Fechar"
-                onClick={() => setIsAuthPanelOpen(false)}
-              >
-                X
-              </button>
-            </div>
-            <AuthCard
-              authMode={authMode}
-              loginForm={loginForm}
-              registerForm={registerForm}
-              isSubmittingAuth={isSubmittingAuth}
-              onModeChange={setAuthMode}
-              onLoginFormChange={setLoginForm}
-              onRegisterFormChange={setRegisterForm}
-              onLogin={handleLogin}
-              onRegister={handleRegister}
-            />
-          </section>
-        </div>
+        <AuthModal
+          authMode={authMode}
+          loginForm={loginForm}
+          registerForm={registerForm}
+          isSubmittingAuth={isSubmittingAuth}
+          onClose={() => setIsAuthPanelOpen(false)}
+          onModeChange={setAuthMode}
+          onLoginFormChange={setLoginForm}
+          onRegisterFormChange={setRegisterForm}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+        />
+      ) : null}
+
+      {profile && isComposerOpen ? (
+        <ComposerModal
+          editorMode={editorMode}
+          postForm={postForm}
+          isAuthenticated={Boolean(profile)}
+          isSubmittingPost={isSubmittingPost}
+          onClose={closeComposer}
+          onChange={setPostForm}
+          onSubmit={handlePostSubmit}
+          onReset={resetComposer}
+        />
       ) : null}
     </div>
   );
-}
-
-function LogoMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 64 64" role="img">
-        <path className="logo-line" d="M32 12v35" />
-        <path className="logo-line" d="M22 18h20" />
-        <path className="logo-line" d="M18 48h28" />
-        <path className="logo-line" d="M26 18 15 34" />
-        <path className="logo-line" d="M38 18 49 34" />
-        <path className="logo-pan" d="M8 34h20c-1 6-4 10-10 10S9 40 8 34Z" />
-        <path className="logo-pan" d="M36 34h20c-1 6-4 10-10 10s-9-4-10-10Z" />
-        <path className="logo-book" d="M12 30c4-2 8-2 12 0v8c-4-2-8-2-12 0v-8Z" />
-        <path className="logo-book" d="M24 30c-4-2-8-2-12 0v8c4-2 8-2 12 0v-8Z" />
-        <circle className="logo-lens" cx="45" cy="34" r="4.5" />
-        <path className="logo-lens" d="m48.5 37.5 4.5 4.5" />
-      </svg>
-    </span>
-  );
-}
-
-function PostCard({ post, isOwner, onSelect }) {
-  const postTopic = getPostTopic(post);
-  const topicLabel = topicLabels[postTopic] || postTopic;
-
-  return (
-    <button
-      type="button"
-      className="post-card"
-      onClick={onSelect}
-    >
-      <div className="post-card__meta post-card__meta--top">
-        <span>{topicLabel}</span>
-        <span>{post.author}</span>
-        <span>{formatDate(post.createdAt)}</span>
-      </div>
-
-      <h4>{post.title}</h4>
-      <p>{truncate(post.content, 140)}</p>
-
-      <div className="post-actions">
-        <span className="action-pill">Abrir conversa</span>
-        <span className="action-pill">Comentarios</span>
-        {isOwner ? <span>seu post</span> : null}
-      </div>
-    </button>
-  );
-}
-
-function AuthCard({
-  authMode,
-  loginForm,
-  registerForm,
-  isSubmittingAuth,
-  onModeChange,
-  onLoginFormChange,
-  onRegisterFormChange,
-  onLogin,
-  onRegister,
-}) {
-  return (
-    <section className="auth-card">
-      <div className="tab-group" role="tablist" aria-label="Acesso">
-        <button
-          type="button"
-          className={`tab ${authMode === "login" ? "tab--active" : ""}`}
-          onClick={() => onModeChange("login")}
-        >
-          Login
-        </button>
-        <button
-          type="button"
-          className={`tab ${authMode === "register" ? "tab--active" : ""}`}
-          onClick={() => onModeChange("register")}
-        >
-          Cadastro
-        </button>
-      </div>
-
-      {authMode === "login" ? (
-        <form className="form-stack" onSubmit={onLogin}>
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={loginForm.email}
-              onChange={(event) =>
-                onLoginFormChange((currentForm) => ({
-                  ...currentForm,
-                  email: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <label className="field">
-            <span>Senha</span>
-            <input
-              type="password"
-              value={loginForm.password}
-              onChange={(event) =>
-                onLoginFormChange((currentForm) => ({
-                  ...currentForm,
-                  password: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <button className="button button--primary" type="submit" disabled={isSubmittingAuth}>
-            {isSubmittingAuth ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
-      ) : (
-        <form className="form-stack" onSubmit={onRegister}>
-          <label className="field">
-            <span>Nome de usuario</span>
-            <input
-              type="text"
-              value={registerForm.username}
-              onChange={(event) =>
-                onRegisterFormChange((currentForm) => ({
-                  ...currentForm,
-                  username: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={registerForm.email}
-              onChange={(event) =>
-                onRegisterFormChange((currentForm) => ({
-                  ...currentForm,
-                  email: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <label className="field">
-            <span>Senha</span>
-            <input
-              type="password"
-              minLength="8"
-              value={registerForm.password}
-              onChange={(event) =>
-                onRegisterFormChange((currentForm) => ({
-                  ...currentForm,
-                  password: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <button className="button button--primary" type="submit" disabled={isSubmittingAuth}>
-            {isSubmittingAuth ? "Criando..." : "Criar conta"}
-          </button>
-        </form>
-      )}
-    </section>
-  );
-}
-
-function ComposerCard({
-  editorMode,
-  postForm,
-  isAuthenticated,
-  isSubmittingPost,
-  onChange,
-  onSubmit,
-  onReset,
-}) {
-  return (
-    <section className="panel side-card composer-card" id="composer-panel">
-      <div className="side-card__header">
-        <h3>{editorMode === "edit" ? "Editar post" : "Novo post"}</h3>
-      </div>
-
-      {isAuthenticated ? (
-        <form className="form-stack" onSubmit={onSubmit}>
-          <label className="field">
-            <span>Titulo</span>
-            <input
-              type="text"
-              maxLength="120"
-              value={postForm.title}
-              onChange={(event) =>
-                onChange((currentForm) => ({
-                  ...currentForm,
-                  title: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <label className="field">
-            <span>Tema</span>
-            <select
-              value={postForm.tema}
-              onChange={(event) =>
-                onChange((currentForm) => ({
-                  ...currentForm,
-                  tema: event.target.value,
-                }))
-              }
-            >
-              {topicOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Conteudo</span>
-            <textarea
-              rows="6"
-              minLength="10"
-              maxLength="4000"
-              value={postForm.content}
-              onChange={(event) =>
-                onChange((currentForm) => ({
-                  ...currentForm,
-                  content: event.target.value,
-                }))
-              }
-              required
-            />
-          </label>
-
-          <div className="button-row">
-            <button className="button button--primary" type="submit" disabled={isSubmittingPost}>
-              {isSubmittingPost
-                ? "Salvando..."
-                : editorMode === "edit"
-                ? "Salvar alteracoes"
-                : "Publicar"}
-            </button>
-            <button className="button button--ghost" type="button" onClick={onReset}>
-              {editorMode === "edit" ? "Cancelar edicao" : "Limpar"}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <EmptyState
-          title="Entre para publicar"
-          description="Use o botao Entrar no topo."
-        />
-      )}
-
-    </section>
-  );
-}
-
-function DetailCard({ post, isAuthenticated, canManage, onBack, onEdit, onClose }) {
-  const postTopic = post ? getPostTopic(post) : "";
-  const topicLabel = topicLabels[postTopic] || postTopic;
-
-  return (
-    <section className="panel side-card side-card--detail thread-card">
-      <div className="thread-header">
-        <button className="back-button" type="button" onClick={onBack} aria-label="Voltar para o feed">
-          Voltar
-        </button>
-        <div>
-          <p>{post ? topicLabel : "Post"}</p>
-          <h3>{post ? post.author : "Escolha um post"}</h3>
-        </div>
-      </div>
-
-      {post ? (
-        <>
-          <h4 className="detail-title">{post.title}</h4>
-          <p className="detail-author">
-            por <strong>{post.author}</strong> em {formatDate(post.createdAt)} - {topicLabel}
-          </p>
-          <p className="detail-content">{post.content}</p>
-
-          {isAuthenticated && canManage ? (
-            <div className="button-row">
-              <button className="button button--secondary" type="button" onClick={() => onEdit(post)}>
-                Editar
-              </button>
-              <button
-                className="button button--ghost"
-                type="button"
-                onClick={onClose}
-                disabled={post.status === "FECHADO"}
-              >
-                {post.status === "FECHADO" ? "Ja fechado" : "Fechar post"}
-              </button>
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <EmptyState
-          title="Sem post selecionado"
-          description="Clique em um card do feed para ler com mais calma aqui."
-        />
-      )}
-    </section>
-  );
-}
-
-function CommentsCard({
-  post,
-  comments,
-  commentForm,
-  isAuthenticated,
-  isLoadingComments,
-  isSubmittingComment,
-  onChange,
-  onSubmit,
-  onLoginRequest,
-}) {
-  return (
-    <section className="panel side-card comments-card">
-      <div className="side-card__header">
-        <h3>Comentarios</h3>
-        <span className="comment-count">{comments.length}</span>
-      </div>
-
-      {!post ? (
-        <EmptyState
-          title="Nada aberto ainda"
-          description="Escolha um post para acompanhar a conversa."
-        />
-      ) : (
-        <>
-          {isAuthenticated ? (
-            <form className="comment-form" onSubmit={onSubmit}>
-              <label className="field">
-                <span>Responder</span>
-                <textarea
-                  rows="4"
-                  maxLength="1600"
-                  value={commentForm.content}
-                  onChange={(event) =>
-                    onChange((currentForm) => ({
-                      ...currentForm,
-                      content: event.target.value,
-                    }))
-                  }
-                  placeholder="Escreva um comentario..."
-                  required
-                />
-              </label>
-
-              <button className="button button--primary" type="submit" disabled={isSubmittingComment}>
-                {isSubmittingComment ? "Enviando..." : "Comentar"}
-              </button>
-            </form>
-          ) : (
-            <div className="comment-login">
-              <p>Entre para participar da conversa.</p>
-              <button className="button button--secondary" type="button" onClick={onLoginRequest}>
-                Entrar
-              </button>
-            </div>
-          )}
-
-          <div className="comments-list">
-            {isLoadingComments ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div className="comment-item comment-item--skeleton" key={index}>
-                  <div className="skeleton-line skeleton-line--short" />
-                  <div className="skeleton-line" />
-                </div>
-              ))
-            ) : comments.length ? (
-              comments.map((comment) => (
-                <CommentItem comment={comment} key={comment.id} />
-              ))
-            ) : (
-              <EmptyState
-                title="Ainda sem comentarios"
-                description="Se a conversa te chamou, puxa o primeiro fio."
-              />
-            )}
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-function CommentItem({ comment }) {
-  return (
-    <article className="comment-item">
-      <div className="comment-item__meta">
-        <strong>{comment.author}</strong>
-        <span>{formatDate(comment.createdAt)}</span>
-      </div>
-      <p>{comment.content}</p>
-    </article>
-  );
-}
-
-function EmptyState({ title, description }) {
-  return (
-    <div className="empty-state">
-      <strong>{title}</strong>
-      <p>{description}</p>
-    </div>
-  );
-}
-
-function getPostTopic(post) {
-  return normalizeTopicValue(post.tema || post.curso || "");
-}
-
-function normalizeTopicValue(value) {
-  return legacyTopicMap[value] || value;
-}
-
-function buildPostPayload(postForm) {
-  return {
-    title: postForm.title,
-    content: postForm.content,
-    tema: postForm.tema,
-    curso: legacyTopicValues[postForm.tema] || postForm.tema,
-  };
-}
-
-async function apiRequest(path, options = {}) {
-  const { method = "GET", body, token } = options;
-  const headers = {
-    Accept: "application/json",
-  };
-
-  if (body) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const rawText = await response.text();
-  const payload = rawText ? tryParseJson(rawText) : null;
-
-  if (!response.ok) {
-    throw new ApiClientError(extractErrorMessage(payload), response.status, payload);
-  }
-
-  return payload;
-}
-
-function tryParseJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
-}
-
-function extractErrorMessage(payload) {
-  if (!payload) {
-    return "Nao foi possivel concluir a requisicao.";
-  }
-
-  if (typeof payload === "string") {
-    return payload;
-  }
-
-  if (Array.isArray(payload.fieldErrors) && payload.fieldErrors.length) {
-    return payload.fieldErrors.map((error) => `${error.field}: ${error.message}`).join(" | ");
-  }
-
-  return payload.message || "Nao foi possivel concluir a requisicao.";
-}
-
-function normalizeApiUrl(value) {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function truncate(value, size) {
-  if (value.length <= size) {
-    return value;
-  }
-
-  return `${value.slice(0, size).trim()}...`;
 }
